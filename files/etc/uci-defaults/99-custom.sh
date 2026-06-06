@@ -46,15 +46,18 @@ lan_ifnames=""
 # 此处特殊处理个别开发板网口顺序问题
 case "$board_name" in
     "radxa,e20c"|"friendlyarm,nanopi-r5c")
+        # 保留原有特例配置不变，如需这两款也改成末位WAN可自行修改
         wan_ifname="eth1"
         lan_ifnames="eth0"
         echo "Using $board_name mapping: WAN=$wan_ifname LAN=$lan_ifnames" >>"$LOGFILE"
         ;;
     *)
-        # 默认第一个接口为WAN，其余为LAN
-        wan_ifname=$(echo "$ifnames" | awk '{print $1}')
-        lan_ifnames=$(echo "$ifnames" | cut -d ' ' -f2-)
-        echo "Using default mapping: WAN=$wan_ifname LAN=$lan_ifnames" >>"$LOGFILE"
+        # ======核心修改：最后一个网口为WAN，剩余全部LAN======
+        # 取出最后一个网卡=WAN
+        wan_ifname=$(echo $ifnames | awk '{print $NF}')
+        # 剔除最后一个，剩下全部作为LAN
+        lan_ifnames=$(echo $ifnames | sed 's/ [^ ]*$//')
+        echo "Using default mapping(last eth as WAN): WAN=$wan_ifname LAN=$lan_ifnames" >>"$LOGFILE"
         ;;
 esac
 
@@ -185,7 +188,7 @@ uci commit
 
 # 设置编译作者信息
 FILE_PATH="/etc/openwrt_release"
-NEW_DESCRIPTION="Packaged by wukongdaily"
+NEW_DESCRIPTION="Packaged by mantang"
 sed -i "s/DISTRIB_DESCRIPTION='[^']*'/DISTRIB_DESCRIPTION='$NEW_DESCRIPTION'/" "$FILE_PATH"
 
 # 若luci-app-advancedplus (进阶设置)已安装 则去除zsh的调用 防止命令行报 /usb/bin/zsh: not found的提示
